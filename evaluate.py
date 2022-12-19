@@ -12,15 +12,29 @@ if torch.cuda.is_available():
 else:
     device = torch.device('cpu')
 
-MODEL_PATH = "/home/pear_group/avnish_ws/PEAR_LAB/model_weights/IM_IM_Sal_Opt_kitti_01_learn_beta/model_130.pth" 
+MODEL_PATH = "/home/pear_group/avnish_ws/PEAR_LAB/model_weights/IM_IM_Sal_Opt_kitti_01_learn_beta/model_60.pth" 
 
-model = BaselineGoogleNetModel()
+model = None
+model_t = "baseline_sal" 
+if model_t == "baseline":
+    model = BaselineGoogleNetModel()
+elif model_t == "baseline_sal":
+    model = SaliencyBaselineGoogleNetModel()
+
 model = model.to(device)
 model.load_state_dict(torch.load(MODEL_PATH))
 model.eval()
 
 data_root_dir = "/home/pear_group/avnish_ws/PEAR_LAB/data/Kitti_odo"
-eval_dataset = KittiOdomEvalDataset(data_root_dir, [0], "train")
+eval_dataset = None
+dataset = "Kitti_odom_sal"
+                                          
+elif(dataset == "Kitti_odom"):
+    eval_dataset = KittiOdomDataset(data_root_dir, [0], "train")
+    
+elif(dataset =="Kitti_odom_sal"):
+    eval_dataset = KittiOdomSaliencyDataset(data_root_dir, [0], "train")
+
 data_loader = DataLoader(eval_dataset, batch_size = 1, shuffle = False, drop_last = False)  
  
 with open('stamped_gt.txt', 'w') as gt_testfile:

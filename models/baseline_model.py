@@ -73,7 +73,7 @@ class BasicConv2d(torch.nn.Module):
 
     def forward(self, x):
         x = self.conv(x)
-        x = self.bn(x)
+        x = self.bn(x.unsqueeze(0))
         return F.relu(x, inplace=True)
 
 class SaliencyBaselineGoogleNetModel(torch.nn.Module):
@@ -103,6 +103,13 @@ class SaliencyBaselineGoogleNetModel(torch.nn.Module):
                 torch.nn.init.kaiming_normal_(m.weight.data)
                 if m.bias is not None:
                     torch.nn.init.constant_(m.bias.data, 0)
+                  
+        # placeholder for the gradients
+        self.gradients = None
+    
+    # hook for the gradients of the activations
+    def activations_hook(self, grad):
+        self.gradients = grad
                     
     def forward(self, x):
         image_1_f = self.init_conv(x[0])
@@ -121,3 +128,25 @@ class SaliencyBaselineGoogleNetModel(torch.nn.Module):
         
         x_poses = torch.cat((x_translations, x_rotations), dim = -1)
         return x_poses
+        
+    # method for the gradient extraction
+    def get_activations_gradient(self):
+        return self.gradients
+    
+    # method for the activation exctraction
+    def get_activations(self, x):
+        return self.fc2(x)
+        
+class SaliencyBaselineGoogleNetExpModel(torch.nn.Module):
+    def __init__(self, num_features = 512):
+        super(SaliencyBaselineGoogleNetExpModel, self).__init__()
+        weights = GoogLeNet_Weights.DEFAULT
+        google_lenenet_model = googlenet(weights=weights)
+        self.features_extractor = torch.nn.Sequential(*list(google_lenenet_model.children())[1:-2])
+        self.init_conv = BasicConv2d(4, 64, kernel_size=7, stride=2, padding=3)
+
+    def forward(self, x):
+        image_1_f = self.init_conv(x[0])
+        feature_image_1 = torch.squeeze(self.features_extractor(image_1_f))
+        return feature_image_1
+        
